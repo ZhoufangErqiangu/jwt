@@ -4,6 +4,14 @@ import { encode } from "./encode";
 
 /**
  * The algorithm used to sign the token
+ *
+ * HS - HMAC with SHA
+ *
+ * PS - RSA (RSASSA-PSS) with SHA
+ *
+ * RS - RSA (RSASSA-PKCS1-v1_5) with SHA
+ *
+ * ES - ECDSA with SHA
  */
 export type JWTAlgorithm =
   | "HS256"
