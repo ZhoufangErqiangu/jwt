@@ -1,10 +1,19 @@
-import { strictEqual } from "node:assert";
+import assert, { strictEqual } from "node:assert";
 import { describe, test } from "node:test";
 import JWT from "../src";
 import { decode } from "../src/decode";
 import { encode } from "../src/encode";
+import { now } from "../src/now";
 
 const SECRET = "your-256-bit-secret";
+
+describe("now unit test", () => {
+  test("should be right now", () => {
+    const n = now();
+    const d = Date.now();
+    assert(Math.abs(n - d / 1000.0) < 2, "Now should be right");
+  });
+});
 
 describe("encode unit test", () => {
   test("should encode right", () => {

@@ -1,6 +1,18 @@
 import { createHmac } from "crypto";
 import { decode } from "./decode";
 import { encode } from "./encode";
+import { now } from "./now";
+
+/**
+ * The key used to sign and verify the token
+ *
+ * If input a string, it will be used as the secret
+ *
+ * Secret is used for HS256, HS384, HS512
+ *
+ * Private key and public key are used for RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512
+ */
+export type JWTKey = string | { publicKey: string; privateKey: string };
 
 /**
  * The algorithm used to sign the token
@@ -43,6 +55,18 @@ export interface JWTOptions {
    * This option will mixed with the payload
    */
   registeredClaims?: JWTPayloadRegisteredClaims;
+  /**
+   * Set the expiration time to now time + dynamicExp, in second
+   *
+   * This option will overwrite the exp in registered claims
+   */
+  dynamicExp?: number;
+  /**
+   * Set the not before time to now time + dynamicNbf, in second
+   *
+   * This option will overwrite the nbf in registered claims
+   */
+  dynamicNbf?: number;
 }
 
 export interface JWTHeader {
@@ -130,16 +154,21 @@ export class JWT {
    * Registered claims
    */
   public registeredClaims: JWTPayloadRegisteredClaims;
+  /**
+   * If the expiration time is dynamic
+   */
+  public dynamicExp?: number;
+  /**
+   * If the not before time is dynamic
+   */
+  public dynamicNbf?: number;
 
   /**
    * Create a new JWT instance
    * @param secret The secret used to sign the token
    * @param options Options for the token
    */
-  constructor(
-    key: string | { publicKey: string; privateKey: string },
-    options: JWTOptions = {},
-  ) {
+  constructor(key: JWTKey, options: JWTOptions = {}) {
     if (typeof key === "string") {
       this.secret = key;
     } else {
@@ -150,6 +179,8 @@ export class JWT {
     this.algorithm = options.algorithm || "HS256";
 
     this.registeredClaims = options.registeredClaims || {};
+    this.dynamicExp = options.dynamicExp;
+    this.dynamicNbf = options.dynamicNbf;
   }
 
   /**
@@ -167,8 +198,11 @@ export class JWT {
    * @returns The payload of the token
    */
   public buildPayload(input: JWTPayload): JWTPayload {
+    const n = now();
     return {
       ...this.registeredClaims,
+      exp: this.dynamicExp ? n + this.dynamicExp : this.registeredClaims.exp,
+      nbf: this.dynamicNbf ? n + this.dynamicNbf : this.registeredClaims.nbf,
       ...input,
     };
   }
@@ -239,21 +273,19 @@ export class JWT {
     if (this.registeredClaims.aud && this.registeredClaims.aud !== input.aud) {
       throw new Error(`Invalid audience ${input.aud}`);
     }
+
+    const n = now();
     // check expiration time
-    if (input.exp) {
-      if (input.exp < Date.now() / 1000) {
-        throw new Error(
-          `Token expired at ${new Date(input.exp * 1000).toISOString()}`,
-        );
-      }
+    if (input.exp && input.exp < n) {
+      throw new Error(
+        `Token expired at ${new Date(input.exp * 1000).toISOString()}`,
+      );
     }
     // check not before
-    if (input.nbf) {
-      if (input.nbf > Date.now() / 1000) {
-        throw new Error(
-          `Token not before ${new Date(input.nbf * 1000).toISOString()}`,
-        );
-      }
+    if (input.nbf && input.nbf > n) {
+      throw new Error(
+        `Token not before ${new Date(input.nbf * 1000).toISOString()}`,
+      );
     }
     if (this.registeredClaims.iat && this.registeredClaims.iat !== input.iat) {
       throw new Error(`Invalid issued at ${input.iat}`);
