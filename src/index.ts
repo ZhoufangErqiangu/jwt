@@ -176,9 +176,9 @@ export class JWT {
       this.privateKey = key.privateKey;
     }
 
-    this.algorithm = options.algorithm || "HS256";
+    this.algorithm = options.algorithm ?? "HS256";
 
-    this.registeredClaims = options.registeredClaims || {};
+    this.registeredClaims = options.registeredClaims ?? {};
     this.dynamicExp = options.dynamicExp;
     this.dynamicNbf = options.dynamicNbf;
   }
