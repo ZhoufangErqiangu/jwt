@@ -78,3 +78,63 @@ describe("JWT unit test", () => {
     );
   });
 });
+
+describe("JWT integration test", () => {
+  test("should be right token", () => {
+    const jwt = new JWT(SECRET);
+    const token = jwt.sign({
+      sub: "1234567890",
+      name: "John Doe",
+      iat: 1516239022,
+    });
+    strictEqual(
+      token,
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "Token should be right",
+    );
+  });
+  test("should be right payload", () => {
+    const jwt = new JWT(SECRET);
+    const payload = jwt.verify(
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    );
+    strictEqual(payload.sub, "1234567890", "Subject should be 1234567890");
+    strictEqual(payload.name, "John Doe", "Name should be John Doe");
+    strictEqual(payload.iat, 1516239022, "Issued at should be 1516239022");
+  });
+  test("should throw", () => {
+    const jwt = new JWT(SECRET);
+    assert.throws(() => {
+      jwt.verify(
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5d",
+      );
+    }, "Signature is not valid");
+  });
+});
+
+describe("JWT integration test with static registered claims", () => {
+  test("should be right token", () => {
+    const jwt = new JWT(SECRET, {
+      registeredClaims: { sub: "1234567890", iat: 1516239022 },
+    });
+    const token = jwt.sign({
+      name: "John Doe",
+    });
+    strictEqual(
+      token,
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UifQ.LWG7yvgEiiKDUA2PmykvKGKMedYPyLWsLCcJR5pn-Kw",
+      "Token should be right",
+    );
+  });
+  test("should be right payload", () => {
+    const jwt = new JWT(SECRET, {
+      registeredClaims: { sub: "1234567890", iat: 1516239022 },
+    });
+    const payload = jwt.verify(
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UifQ.LWG7yvgEiiKDUA2PmykvKGKMedYPyLWsLCcJR5pn-Kw",
+    );
+    strictEqual(payload.sub, "1234567890", "Subject should be 1234567890");
+    strictEqual(payload.name, "John Doe", "Name should be John Doe");
+    strictEqual(payload.iat, 1516239022, "Issued at should be 1516239022");
+  });
+});
