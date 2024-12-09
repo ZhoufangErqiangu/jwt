@@ -211,8 +211,11 @@ export class JWT {
    * @param input The input to sign
    * @returns The signature of the input
    */
-  public buildSignature(input: string): string {
-    switch (this.algorithm) {
+  public buildSignature(
+    input: string,
+    algorithm: string = this.algorithm,
+  ): string {
+    switch (algorithm) {
       case "HS256":
       case "HS384":
       case "HS512": {
@@ -298,27 +301,19 @@ export class JWT {
 
   /**
    * Chec the signature of the input
+   * @param algorithm The algorithm to use
    * @param input The input to verify
    * @param signature The signature to check
    * @returns If the signature is correct
    */
   public checkSignature(
-    algorithm: JWTAlgorithm | string,
-    input: string,
     signature: string,
+    input: string,
+    algorithm: JWTAlgorithm | string,
   ) {
-    switch (algorithm) {
-      case "HS256":
-      case "HS384":
-      case "HS512": {
-        const s = this.buildSignature(input);
-        if (s !== signature) {
-          throw new Error("Invalid signature");
-        }
-        break;
-      }
-      default:
-        throw new Error(`Algorithm ${algorithm} is not supported`);
+    const s = this.buildSignature(input, algorithm);
+    if (s !== signature) {
+      throw new Error("Invalid signature");
     }
   }
 
@@ -339,7 +334,7 @@ export class JWT {
 
     // check signature
     const s1 = `${header}.${payload}`;
-    this.checkSignature(h.alg, s1, signature);
+    this.checkSignature(signature, s1, h.alg);
 
     return p;
   }
