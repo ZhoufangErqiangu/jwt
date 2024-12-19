@@ -169,7 +169,6 @@ $RECYCLE.BIN/
 *.lnk
 
 build
-.env
 
 # ts's build info
 .tsbuildinfo
@@ -178,7 +177,8 @@ build
 src
 
 # tests
-test
+test/
+tests/
 
 # CI only files
 ghPagesPre.sh

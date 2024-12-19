@@ -159,7 +159,6 @@ $RECYCLE.BIN/
 
 ## Customs for this project
 build
-.env
 dist
 
 # ts's build info
