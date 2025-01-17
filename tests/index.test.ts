@@ -1,19 +1,10 @@
-import assert, { strictEqual } from "node:assert";
+import { strictEqual, throws } from "node:assert";
 import { describe, test } from "node:test";
 import JWT from "../src";
 import { decode } from "../src/decode";
 import { encode } from "../src/encode";
-import { now } from "../src/now";
 
 const SECRET = "your-256-bit-secret";
-
-describe("now unit test", () => {
-  test("should be right now", () => {
-    const n = now();
-    const d = Date.now();
-    assert(Math.abs(n - d / 1000.0) < 2, "Now should be right");
-  });
-});
 
 describe("encode unit test", () => {
   test("should encode right", () => {
@@ -52,8 +43,8 @@ describe("JWT unit test", () => {
     strictEqual(h.typ, "JWT", "Type should be JWT");
   });
   test("should be right static registered claims", () => {
-    const jwt = new JWT(SECRET, { registeredClaims: { iss: "test" } });
-    strictEqual(jwt.registeredClaims.iss, "test", "Issuer should be test");
+    const jwt = new JWT(SECRET, { issuer: "test" });
+    strictEqual(jwt.issuer, "test", "Issuer should be test");
   });
   test("should be right payload", () => {
     const jwt = new JWT(SECRET);
@@ -61,7 +52,7 @@ describe("JWT unit test", () => {
     strictEqual(p.test, "test", "Test should be test");
   });
   test("should be right payload with static registered claims", () => {
-    const jwt = new JWT(SECRET, { registeredClaims: { iss: "test" } });
+    const jwt = new JWT(SECRET, { issuer: "test" });
     const p = jwt.buildPayload({ test: "test" });
     strictEqual(p.test, "test", "Test should be test");
     strictEqual(p.iss, "test", "Issuer should be test isser");
@@ -89,7 +80,7 @@ describe("JWT integration test", () => {
     });
     strictEqual(
       token,
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UifQ.LWG7yvgEiiKDUA2PmykvKGKMedYPyLWsLCcJR5pn-Kw",
       "Token should be right",
     );
   });
@@ -104,18 +95,19 @@ describe("JWT integration test", () => {
   });
   test("should throw", () => {
     const jwt = new JWT(SECRET);
-    assert.throws(() => {
+    throws(() => {
       jwt.verify(
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5d",
       );
-    }, "Signature is not valid");
+    }, /^Error: Invalid signature/);
   });
 });
 
 describe("JWT integration test with static registered claims", () => {
   test("should be right token", () => {
     const jwt = new JWT(SECRET, {
-      registeredClaims: { sub: "1234567890", iat: 1516239022 },
+      subject: "1234567890",
+      issuedAt: 1516239022000,
     });
     const token = jwt.sign({
       name: "John Doe",
@@ -128,7 +120,8 @@ describe("JWT integration test with static registered claims", () => {
   });
   test("should be right payload", () => {
     const jwt = new JWT(SECRET, {
-      registeredClaims: { sub: "1234567890", iat: 1516239022 },
+      subject: "1234567890",
+      issuedAt: 1516239022000,
     });
     const payload = jwt.verify(
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UifQ.LWG7yvgEiiKDUA2PmykvKGKMedYPyLWsLCcJR5pn-Kw",
@@ -136,5 +129,14 @@ describe("JWT integration test with static registered claims", () => {
     strictEqual(payload.sub, "1234567890", "Subject should be 1234567890");
     strictEqual(payload.name, "John Doe", "Name should be John Doe");
     strictEqual(payload.iat, 1516239022, "Issued at should be 1516239022");
+  });
+  test("should throw expiration time", () => {
+    const jwt = new JWT(SECRET, { expirationTime: 1516239022000 });
+    throws(() => {
+      jwt.verify(
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNTE2MjM5MDIyfQ.E9bQ6QAil4HpH825QC5PtjNGEDQTtMpcj0SO2W8vmag",
+        { currentTime: 1516239023000 },
+      );
+    }, /^Error: Token expired at/);
   });
 });

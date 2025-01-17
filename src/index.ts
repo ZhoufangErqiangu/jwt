@@ -1,7 +1,7 @@
 import { createHmac } from "crypto";
 import { decode } from "./decode";
 import { encode } from "./encode";
-import { now } from "./now";
+import { buildTime } from "./time";
 
 /**
  * The key used to sign and verify the token
@@ -50,23 +50,47 @@ export interface JWTOptions {
    */
   algorithm?: JWTAlgorithm | string;
   /**
-   * Registered claims
+   * Issuer
    *
-   * This option will mixed with the payload
+   * If set, the token will check if the issuer is the same
    */
-  registeredClaims?: JWTPayloadRegisteredClaims;
+  issuer?: string;
   /**
-   * Set the expiration time to now time + dynamicExp, in second
+   * Subject
    *
-   * This option will overwrite the exp in registered claims
+   * If set, the token will check if the subject is the same
    */
-  dynamicExp?: number;
+  subject?: string;
   /**
-   * Set the not before time to now time + dynamicNbf, in second
+   * Audience
    *
-   * This option will overwrite the nbf in registered claims
+   * If set, the token will check if the audience is the same
    */
-  dynamicNbf?: number;
+  audience?: string;
+  /**
+   * Expiration time, in milliseconds
+   *
+   * If set, the token exp will be set to the value
+   */
+  expirationTime?: number;
+  /**
+   * Not before, in milliseconds
+   *
+   * If set, the token nbf will be set to the value
+   */
+  notBefore?: number;
+  /**
+   * Issued at, in milliseconds
+   *
+   * If set, the token iat will be set to the value
+   */
+  issuedAt?: number;
+  /**
+   * JWT ID
+   *
+   * If set, the token will check if the JWT ID is the same
+   */
+  jwtID?: string;
 }
 
 export interface JWTHeader {
@@ -91,15 +115,15 @@ export interface JWTPayloadRegisteredClaims {
    */
   aud?: string;
   /**
-   * Expiration Time
+   * Expiration Time, in seconds
    */
   exp?: number;
   /**
-   * Not Before
+   * Not Before, in seconds
    */
   nbf?: number;
   /**
-   * Issued At
+   * Issued At, in seconds
    */
   iat?: number;
   /**
@@ -114,6 +138,86 @@ export interface JWTPayloadRegisteredClaims {
  * If you want to use private claims, you should crypto it by yourself.
  */
 export type JWTPayload = JWTPayloadRegisteredClaims & Record<string, unknown>;
+
+export interface JWTSignOptions {
+  /**
+   * Issuer
+   *
+   * If set, the token iss will be set to the value
+   */
+  issuer?: string;
+  /**
+   * Subject
+   *
+   * If set, the token sub will be set to the value
+   */
+  subject?: string;
+  /**
+   * Audience
+   *
+   * If set, the token aud will be set to the value
+   */
+  audience?: string;
+  /**
+   * Expiration time, in milliseconds
+   *
+   * If set, the token exp will be set to the value
+   */
+  expirationTime?: number;
+  /**
+   * Not before, in milliseconds
+   *
+   * If set, the token nbf will be set to the value
+   */
+  notBefore?: number;
+  /**
+   * Issued at, in milliseconds
+   *
+   * If set, the token iat will be set to the value
+   */
+  issuedAt?: number;
+  /**
+   * JWT ID
+   *
+   * If set, the token jti will be set to the value
+   */
+  jwtID?: string;
+}
+
+export interface JWTVerifyOptions {
+  /**
+   * Issuer
+   *
+   * If set, the token will check if the issuer is the same
+   */
+  issuer?: string;
+  /**
+   * Subject
+   *
+   * If set, the token will check if the subject is the same
+   */
+  subject?: string;
+  /**
+   * Audience
+   *
+   * If set, the token will check if the audience is the same
+   */
+  audience?: string;
+  /**
+   * Current time, in milliseconds
+   *
+   * If set, the token will check if the current time is less than the expiration time
+   *
+   * If not set, the current time will be set to `Date.now()`
+   */
+  currentTime?: number;
+  /**
+   * JWT ID
+   *
+   * If set, the token will check if the JWT ID is the same
+   */
+  jwtID?: string;
+}
 
 /**
  * A class to create and verify JSON Web Tokens
@@ -150,18 +254,27 @@ export class JWT {
    */
   public algorithm: JWTAlgorithm | string;
 
-  /**
-   * Registered claims
-   */
-  public registeredClaims: JWTPayloadRegisteredClaims;
-  /**
-   * If the expiration time is dynamic
-   */
-  public dynamicExp?: number;
-  /**
-   * If the not before time is dynamic
-   */
-  public dynamicNbf?: number;
+  public algorithmMap: Record<string, string> = {
+    HS256: "sha256",
+    HS384: "sha384",
+    HS512: "sha512",
+  };
+
+  public get realAlgorithm(): string {
+    const a = this.algorithmMap[this.algorithm];
+    if (!a) {
+      throw new Error(`Algorithm ${this.algorithm} is not supported`);
+    }
+    return a;
+  }
+
+  public issuer?: string;
+  public subject?: string;
+  public audience?: string;
+  public expirationTime?: number;
+  public notBefore?: number;
+  public issuedAt?: number;
+  public jwtID?: string;
 
   /**
    * Create a new JWT instance
@@ -178,9 +291,13 @@ export class JWT {
 
     this.algorithm = options.algorithm ?? "HS256";
 
-    this.registeredClaims = options.registeredClaims ?? {};
-    this.dynamicExp = options.dynamicExp;
-    this.dynamicNbf = options.dynamicNbf;
+    this.issuer = options.issuer;
+    this.subject = options.subject;
+    this.audience = options.audience;
+    this.expirationTime = options.expirationTime;
+    this.notBefore = options.notBefore;
+    this.issuedAt = options.issuedAt;
+    this.jwtID = options.jwtID;
   }
 
   /**
@@ -197,14 +314,31 @@ export class JWT {
    * @param input The payload of the token
    * @returns The payload of the token
    */
-  public buildPayload(input: JWTPayload): JWTPayload {
-    const n = now();
-    return {
-      ...this.registeredClaims,
-      exp: this.dynamicExp ? n + this.dynamicExp : this.registeredClaims.exp,
-      nbf: this.dynamicNbf ? n + this.dynamicNbf : this.registeredClaims.nbf,
-      ...input,
+  public buildPayload(
+    input: JWTPayload,
+    options: JWTSignOptions = {},
+  ): JWTPayload {
+    const rc: JWTPayloadRegisteredClaims = {
+      iss: this.issuer ?? options.issuer,
+      sub: this.subject ?? options.subject,
+      aud: this.audience ?? options.audience,
+      exp: this.expirationTime ?? options.expirationTime,
+      nbf: this.notBefore ?? options.notBefore,
+      iat: this.issuedAt ?? options.issuedAt,
+      jti: this.jwtID ?? options.jwtID,
     };
+
+    if (rc.exp) {
+      rc.exp = buildTime(rc.exp);
+    }
+    if (rc.nbf) {
+      rc.nbf = buildTime(rc.nbf);
+    }
+    if (rc.iat) {
+      rc.iat = buildTime(rc.iat);
+    }
+
+    return { ...rc, ...input };
   }
 
   /**
@@ -222,10 +356,7 @@ export class JWT {
         if (!this.secret) {
           throw new Error("Secret is required for HS256, HS384, HS512");
         }
-        const hmac = createHmac(
-          this.algorithm.replace("HS", "sha") as string,
-          this.secret,
-        );
+        const hmac = createHmac(this.realAlgorithm, this.secret);
         hmac.update(input);
         return hmac.digest("base64url");
       }
@@ -238,9 +369,9 @@ export class JWT {
    * @param input The payload of the token
    * @returns The signed token
    */
-  public sign(input: JWTPayload): string {
+  public sign(input: JWTPayload, options: JWTSignOptions = {}): string {
     const h = encode(this.buildHeader());
-    const p = encode(this.buildPayload(input));
+    const p = encode(this.buildPayload(input, options));
 
     const s1 = `${h}.${p}`;
 
@@ -263,21 +394,24 @@ export class JWT {
    * Check the payload of the token
    * @param input The payload of the token
    */
-  public checkPayload(input: JWTPayload) {
+  public checkPayload(input: JWTPayload, options: JWTVerifyOptions = {}) {
     // check issuer
-    if (this.registeredClaims.iss && this.registeredClaims.iss !== input.iss) {
+    const iss = this.issuer ?? options.issuer;
+    if (iss && iss !== input.iss) {
       throw new Error(`Invalid issuer ${input.iss}`);
     }
     // check subject
-    if (this.registeredClaims.sub && this.registeredClaims.sub !== input.sub) {
+    const sub = this.subject ?? options.subject;
+    if (sub && sub !== input.sub) {
       throw new Error(`Invalid subject ${input.sub}`);
     }
     // check audience
-    if (this.registeredClaims.aud && this.registeredClaims.aud !== input.aud) {
+    const aud = this.audience ?? options.audience;
+    if (aud && aud !== input.aud) {
       throw new Error(`Invalid audience ${input.aud}`);
     }
 
-    const n = now();
+    const n = buildTime(options.currentTime ?? Date.now());
     // check expiration time
     if (input.exp && input.exp < n) {
       throw new Error(
@@ -290,11 +424,10 @@ export class JWT {
         `Token not before ${new Date(input.nbf * 1000).toISOString()}`,
       );
     }
-    if (this.registeredClaims.iat && this.registeredClaims.iat !== input.iat) {
-      throw new Error(`Invalid issued at ${input.iat}`);
-    }
+
     // check jwt id
-    if (this.registeredClaims.jti && this.registeredClaims.jti !== input.jti) {
+    const jti = this.jwtID ?? options.jwtID;
+    if (jti && jti !== input.jti) {
       throw new Error(`Invalid JWT ID ${input.jti}`);
     }
   }
@@ -321,7 +454,10 @@ export class JWT {
    * @param input The token to verify
    * @returns The payload of the token
    */
-  public verify<T extends JWTPayload = JWTPayload>(input: string): T {
+  public verify<T extends JWTPayload = JWTPayload>(
+    input: string,
+    options: JWTVerifyOptions = {},
+  ): T {
     const [header, payload, signature] = input.split(".");
 
     // check header
@@ -330,7 +466,7 @@ export class JWT {
 
     // check payload
     const p = decode<T>(payload);
-    this.checkPayload(p);
+    this.checkPayload(p, options);
 
     // check signature
     const s1 = `${header}.${payload}`;
