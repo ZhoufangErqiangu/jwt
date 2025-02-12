@@ -1,6 +1,6 @@
 import { strictEqual, throws } from "node:assert";
 import { describe, test } from "node:test";
-import JWT from "../src";
+import JWT, { JWTError } from "../src";
 import { decode } from "../src/decode";
 import { encode } from "../src/encode";
 
@@ -99,7 +99,7 @@ describe("JWT integration test", () => {
       jwt.verify(
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5d",
       );
-    }, /^Error: Invalid signature/);
+    }, JWTError);
   });
 });
 
@@ -137,6 +137,6 @@ describe("JWT integration test with static registered claims", () => {
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiZXhwIjoxNTE2MjM5MDIyfQ.E9bQ6QAil4HpH825QC5PtjNGEDQTtMpcj0SO2W8vmag",
         { currentTime: 1516239023000 },
       );
-    }, /^Error: Token expired at/);
+    }, JWTError);
   });
 });

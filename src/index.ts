@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 import { decode } from "./decode";
 import { encode } from "./encode";
+import { JWTError } from "./error";
 import { buildTime } from "./time";
 
 /**
@@ -263,7 +264,7 @@ export class JWT {
   public get realAlgorithm(): string {
     const a = this.algorithmMap[this.algorithm];
     if (!a) {
-      throw new Error(`Algorithm ${this.algorithm} is not supported`);
+      throw new JWTError(`Algorithm ${this.algorithm} is not supported`);
     }
     return a;
   }
@@ -354,14 +355,14 @@ export class JWT {
       case "HS384":
       case "HS512": {
         if (!this.secret) {
-          throw new Error("Secret is required for HS256, HS384, HS512");
+          throw new JWTError("Secret is required for HS256, HS384, HS512");
         }
         const hmac = createHmac(this.realAlgorithm, this.secret);
         hmac.update(input);
         return hmac.digest("base64url");
       }
       default:
-        throw new Error(`Algorithm ${this.algorithm} is not supported`);
+        throw new JWTError(`Algorithm ${this.algorithm} is not supported`);
     }
   }
 
@@ -386,7 +387,7 @@ export class JWT {
    */
   public checkHeader(input: JWTHeader) {
     if (input.typ !== "JWT") {
-      throw new Error(`Invalid type ${input.typ}`);
+      throw new JWTError(`Invalid type ${input.typ}`);
     }
   }
 
@@ -398,29 +399,29 @@ export class JWT {
     // check issuer
     const iss = this.issuer ?? options.issuer;
     if (iss && iss !== input.iss) {
-      throw new Error(`Invalid issuer ${input.iss}`);
+      throw new JWTError(`Invalid issuer ${input.iss}`);
     }
     // check subject
     const sub = this.subject ?? options.subject;
     if (sub && sub !== input.sub) {
-      throw new Error(`Invalid subject ${input.sub}`);
+      throw new JWTError(`Invalid subject ${input.sub}`);
     }
     // check audience
     const aud = this.audience ?? options.audience;
     if (aud && aud !== input.aud) {
-      throw new Error(`Invalid audience ${input.aud}`);
+      throw new JWTError(`Invalid audience ${input.aud}`);
     }
 
     const n = buildTime(options.currentTime ?? Date.now());
     // check expiration time
     if (input.exp && input.exp < n) {
-      throw new Error(
+      throw new JWTError(
         `Token expired at ${new Date(input.exp * 1000).toISOString()}`,
       );
     }
     // check not before
     if (input.nbf && input.nbf > n) {
-      throw new Error(
+      throw new JWTError(
         `Token not before ${new Date(input.nbf * 1000).toISOString()}`,
       );
     }
@@ -428,7 +429,7 @@ export class JWT {
     // check jwt id
     const jti = this.jwtID ?? options.jwtID;
     if (jti && jti !== input.jti) {
-      throw new Error(`Invalid JWT ID ${input.jti}`);
+      throw new JWTError(`Invalid JWT ID ${input.jti}`);
     }
   }
 
@@ -446,7 +447,7 @@ export class JWT {
   ) {
     const s = this.buildSignature(input, algorithm);
     if (s !== signature) {
-      throw new Error("Invalid signature");
+      throw new JWTError("Invalid signature");
     }
   }
 
@@ -475,5 +476,7 @@ export class JWT {
     return p;
   }
 }
+
+export * from "./error";
 
 export default JWT;
