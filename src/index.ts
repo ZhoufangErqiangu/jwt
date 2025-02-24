@@ -493,6 +493,15 @@ export class JWT {
   static decode<T>(input: string) {
     return decode<T>(input);
   }
+
+  /**
+   * Encode data
+   * @param data The data to encode
+   * @returns The encoded data
+   */
+  static encode(data: unknown): string {
+    return encode(data);
+  }
 }
 
 export * from "./error";
