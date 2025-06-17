@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import { decode } from "./decode";
 import { encode } from "./encode";
 import { JWTError } from "./error";
+import { parse } from "./parse";
 import { buildTime } from "./time";
 
 /**
@@ -453,7 +454,7 @@ export class JWT {
     input: string,
     options: JWTVerifyOptions = {},
   ): T {
-    const [header, payload, signature] = JWT.parse(input);
+    const [header, payload, signature] = parse(input);
 
     // check header
     const h = decode<JWTHeader>(header);
@@ -468,33 +469,6 @@ export class JWT {
     this.checkSignature(signature, s1, h.alg);
 
     return p;
-  }
-
-  /**
-   * Parse the token
-   * @param input The token to parse
-   * @returns The header, payload, and signature of the token
-   */
-  static parse(input: string): [string, string, string] {
-    return input.split(".", 3) as [string, string, string];
-  }
-
-  /**
-   * Decode header or payload
-   * @param input The input to decode
-   * @returns The decoded input
-   */
-  static decode<T>(input: string) {
-    return decode<T>(input);
-  }
-
-  /**
-   * Encode data
-   * @param data The data to encode
-   * @returns The encoded data
-   */
-  static encode(data: unknown): string {
-    return encode(data);
   }
 }
 

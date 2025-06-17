@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import JWT, { JWTError } from "../src";
 import { decode } from "../src/decode";
 import { encode } from "../src/encode";
+import { parse } from "../src/parse";
 
 const SECRET = "your-256-bit-secret";
 
@@ -24,6 +25,30 @@ describe("decode unit test", () => {
     );
     strictEqual(d.alg, "HS256", "Algorithm should be HS256");
     strictEqual(d.typ, "JWT", "Type should be JWT");
+  });
+});
+
+describe("parse unit test", () => {
+  test("should parse right", () => {
+    const r = parse(
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+    );
+    strictEqual(r.length, 3, "Token parts length must be 3");
+    strictEqual(
+      r[0],
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+      "Token header is not right",
+    );
+    strictEqual(
+      r[1],
+      "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
+      "Token header is not right",
+    );
+    strictEqual(
+      r[2],
+      "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "Token header is not right",
+    );
   });
 });
 
