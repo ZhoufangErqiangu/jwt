@@ -22,7 +22,7 @@
   "packageManager": "yarn@1.22.19",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "push": "yarn version --patch && git push",
+    "push": "yarn version --patch && git push && git push --tags",
     "test": "ts-node ./tests/index.test.ts"
   },
   "devDependencies": {
