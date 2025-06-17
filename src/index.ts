@@ -329,15 +329,9 @@ export class JWT {
       jti: this.jwtID ?? options.jwtID,
     };
 
-    if (rc.exp) {
-      rc.exp = buildTime(rc.exp);
-    }
-    if (rc.nbf) {
-      rc.nbf = buildTime(rc.nbf);
-    }
-    if (rc.iat) {
-      rc.iat = buildTime(rc.iat);
-    }
+    if (rc.exp) rc.exp = buildTime(rc.exp);
+    if (rc.nbf) rc.nbf = buildTime(rc.nbf);
+    if (rc.iat) rc.iat = buildTime(rc.iat);
 
     return { ...rc, ...input };
   }
