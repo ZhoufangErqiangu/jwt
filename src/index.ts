@@ -3,7 +3,7 @@ import { decode } from "./decode";
 import { encode } from "./encode";
 import { JWTError } from "./error";
 import { parse } from "./parse";
-import { buildTime } from "./time";
+import { buildTime, now } from "./time";
 
 /**
  * The key used to sign and verify the token
@@ -326,7 +326,7 @@ export class JWT {
       aud: this.audience ?? options.audience,
       exp: this.expirationTime ?? options.expirationTime,
       nbf: this.notBefore ?? options.notBefore,
-      iat: this.issuedAt ?? options.issuedAt,
+      iat: this.issuedAt ?? options.issuedAt ?? now(),
       jti: this.jwtID ?? options.jwtID,
     };
 
