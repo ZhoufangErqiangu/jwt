@@ -26,6 +26,8 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org"
 
+      - run: npm ci
+
       - name: Install dependencies, test and build
         run: |
           yarn install
@@ -33,6 +35,4 @@ jobs:
           yarn run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish
