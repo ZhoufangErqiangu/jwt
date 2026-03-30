@@ -439,8 +439,6 @@ export class JWT {
 
     const hp = `${h}.${p}`;
 
-    console.log("hp", hp);
-
     const s = this.buildSignature(hp, this.algorithm, "utf-8");
 
     return `${hp}.${s}`;
