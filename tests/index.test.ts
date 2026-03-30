@@ -1,6 +1,13 @@
 import { strictEqual, throws } from "node:assert";
 import { describe, test } from "node:test";
-import JWT, { JWTError } from "../src";
+import JWT, {
+  JWTError,
+  JWTErrorExpired,
+  JWTErrorInvalidAudience,
+  JWTErrorInvalidIssuer,
+  JWTErrorInvalidJwtId,
+  JWTErrorInvalidSubject,
+} from "../src";
 
 const SECRET = "a-string-secret-at-least-256-bits-long";
 
@@ -165,6 +172,51 @@ describe("JWT integration test HS256", () => {
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UiLCJhZG1pbiI6dHJ1ZX0._-A3B6dTUb8NrJi2SlUH_9jxmaU3plM2sxf-OyXnWi",
       );
     }, JWTError);
+  });
+
+  test("should throw because isser not match", () => {
+    const jwt = new JWT(SECRET, { issuer: "issuer" });
+    const token = jwt.sign({ iss: "invalid" });
+
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidIssuer);
+  });
+
+  test("should throw because subject not match", () => {
+    const jwt = new JWT(SECRET, { subject: "subject" });
+    const token = jwt.sign({ sub: "invalid" });
+
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidSubject);
+  });
+
+  test("should throw because audience not match", () => {
+    const jwt = new JWT(SECRET, { audience: "audience" });
+    const token = jwt.sign({ aud: "invalid" });
+
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidAudience);
+  });
+
+  test("should throw because jwt id not match", () => {
+    const jwt = new JWT(SECRET, { jwtID: "id" });
+    const token = jwt.sign({ jti: "invalid" });
+
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidJwtId);
+  });
+
+  test("should throw because expire", () => {
+    const jwt = new JWT(SECRET);
+    const token = jwt.sign({ exp: 0 });
+
+    throws(() => {
+      jwt.verify(token, { currentTime: 1001 });
+    }, JWTErrorExpired);
   });
 });
 

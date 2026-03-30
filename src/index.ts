@@ -468,11 +468,11 @@ export class JWT {
 
     const n = JWT.ms2s(options.currentTime ?? Date.now());
     // check expiration time
-    if (input.exp && input.exp < n) {
+    if (typeof input.exp === "number" && input.exp < n) {
       throw new JWTErrorExpired(input.exp);
     }
     // check not before
-    if (input.nbf && input.nbf > n) {
+    if (typeof input.nbf === "number" && input.nbf > n) {
       throw new JWTErrorNotBefore(input.nbf);
     }
 
