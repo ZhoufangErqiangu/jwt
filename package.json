@@ -19,7 +19,7 @@
     "dist/**/*.js",
     "dist/**/*.d.ts"
   ],
-  "packageManager": "yarn@1.22.19",
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "push": "yarn version --patch && git push && git push --tags",
