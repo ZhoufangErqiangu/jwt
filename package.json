@@ -10,7 +10,7 @@
   "author": "Alex",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ZhoufangErqiangu/jwt"
+    "url": "git+https://github.com/ZhoufangErqiangu/jwt.git"
   },
   "license": "MIT",
   "main": "dist/index.js",
