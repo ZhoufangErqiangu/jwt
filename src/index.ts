@@ -8,7 +8,7 @@ import {
   JsonWebKeyInput,
   KeyObject,
   PrivateKeyInput,
-  PublicKeyInput
+  PublicKeyInput,
 } from "crypto";
 import {
   JWTErrorAlgorithmNotSupport,
@@ -336,18 +336,9 @@ export class JWT {
         JWTKeyPublicKey;
 
       if (privateKey) {
-        switch (options.algorithm) {
-          case "RS256":
-          case "RS384":
-          case "RS512":
-            this.privateKey = createPrivateKey(privateKey);
-            this.publicKey = createPublicKey(this.privateKey);
-            break;
-          case undefined:
-            throw new JWTErrorAlgorithmNotSupport("undefined");
-          default:
-            throw new JWTErrorAlgorithmNotSupport(options.algorithm);
-        }
+        this.privateKey = createPrivateKey(privateKey);
+        // create public key from private key
+        this.publicKey = createPublicKey(this.privateKey);
       } else if (publicKey) {
         // only set public key
         this.publicKey = createPublicKey(publicKey);
