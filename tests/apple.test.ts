@@ -1,8 +1,9 @@
+import { webcrypto } from "node:crypto";
 import JWT, { JWTHeader } from "../src";
 
 const token = "";
 
-interface TokenKey extends JsonWebKey {
+interface TokenKey extends webcrypto.JsonWebKey {
   kid: string;
 }
 const PUBLIC_KEYS: Array<TokenKey> = [
