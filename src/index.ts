@@ -144,31 +144,31 @@ export interface JWTPayloadRegisteredClaims {
   /**
    * Issuer
    */
-  iss?: string;
+  iss?: string | undefined;
   /**
    * Subject
    */
-  sub?: string;
+  sub?: string | undefined;
   /**
    * Audience
    */
-  aud?: string;
+  aud?: string | undefined;
   /**
    * Expiration Time, in seconds
    */
-  exp?: number;
+  exp?: number | undefined;
   /**
    * Not Before, in seconds
    */
-  nbf?: number;
+  nbf?: number | undefined;
   /**
    * Issued At, in seconds
    */
-  iat?: number;
+  iat?: number | undefined;
   /**
    * JWT ID
    */
-  jti?: string;
+  jti?: string | undefined;
 }
 
 /**
@@ -313,13 +313,13 @@ export class JWT {
     return JWT.ms2s(Date.now());
   }
 
-  public issuer?: string;
-  public subject?: string;
-  public audience?: string;
-  public expirationTime?: number;
-  public notBefore?: number;
-  public issuedAt?: number;
-  public jwtID?: string;
+  public issuer?: string | undefined;
+  public subject?: string | undefined;
+  public audience?: string | undefined;
+  public expirationTime?: number | undefined;
+  public notBefore?: number | undefined;
+  public issuedAt?: number | undefined;
+  public jwtID?: string | undefined;
 
   /**
    * Create a new JWT instance
