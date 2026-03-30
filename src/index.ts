@@ -133,7 +133,7 @@ export interface JWTOptions {
 }
 
 export interface JWTHeader {
-  typ: string;
+  typ?: string;
   alg: JWTAlgorithm | string;
 }
 
@@ -329,8 +329,10 @@ export class JWT {
   constructor(key: JWTKey, options: JWTOptions = {}) {
     if (typeof key === "string") {
       this.secret = createSecretKey(key, "utf-8");
+      this.algorithm = options.algorithm ?? "HS256";
     } else if (key instanceof Buffer) {
       this.secret = createSecretKey(key);
+      this.algorithm = options.algorithm ?? "HS256";
     } else {
       const { privateKey, publicKey } = key as JWTKeyPrivateKey &
         JWTKeyPublicKey;
@@ -343,9 +345,9 @@ export class JWT {
         // only set public key
         this.publicKey = createPublicKey(publicKey);
       }
-    }
 
-    this.algorithm = options.algorithm ?? "HS256";
+      this.algorithm = options.algorithm ?? "RS256";
+    }
 
     this.issuer = options.issuer;
     this.subject = options.subject;
@@ -445,7 +447,9 @@ export class JWT {
   }
 
   private checkHeader(input: JWTHeader) {
-    if (input.typ !== "JWT") throw new JWTErrorInvalidType(input.typ);
+    if (input.typ && input.typ !== "JWT") {
+      throw new JWTErrorInvalidType(input.typ);
+    }
   }
 
   private checkPayload(input: JWTPayload, options: JWTVerifyOptions = {}) {
