@@ -5,11 +5,10 @@ import {
   createSecretKey,
   createSign,
   createVerify,
-  generateKeyPairSync,
   JsonWebKeyInput,
   KeyObject,
   PrivateKeyInput,
-  PublicKeyInput,
+  PublicKeyInput
 } from "crypto";
 import {
   JWTErrorAlgorithmNotSupport,
