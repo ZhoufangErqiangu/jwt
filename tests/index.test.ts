@@ -3,10 +3,14 @@ import { describe, test } from "node:test";
 import JWT, {
   JWTError,
   JWTErrorExpired,
+  JWTErrorInvalidAlgorithm,
   JWTErrorInvalidAudience,
   JWTErrorInvalidIssuer,
   JWTErrorInvalidJwtId,
+  JWTErrorInvalidSignature,
   JWTErrorInvalidSubject,
+  JWTErrorInvalidToken,
+  JWTErrorInvalidTokenLength,
 } from "../src";
 
 const SECRET = "a-string-secret-at-least-256-bits-long";
@@ -245,5 +249,125 @@ describe("JWT integration test RS256", () => {
     strictEqual(payload.name, "John Doe", "Name should be `John Doe`");
     strictEqual(payload.admin, true, "Name should be `true`");
     strictEqual(payload.iat, 1516239022, "Issued at should be 1516239022");
+  });
+});
+
+describe("JWT RS256 signature encoding", () => {
+  const jwt = new JWT({ privateKey: PRIVATE_KEY });
+  const token = jwt.sign({ a: 1 });
+
+  test("should verify the canonical token", () => {
+    strictEqual(jwt.verify(token).a, 1);
+  });
+
+  test("should throw because signature is not canonical base64 url", () => {
+    const [h, p, sig] = JWT.parse(token);
+    const std = sig.replace(/-/g, "+").replace(/_/g, "/");
+    for (const s of [`${sig}!!`, `${sig}=`, `${sig}\n`, `${sig}A`]) {
+      throws(() => {
+        jwt.verify(`${h}.${p}.${s}`);
+      }, JWTErrorInvalidSignature);
+    }
+    if (std !== sig) {
+      throws(() => {
+        jwt.verify(`${h}.${p}.${std}`);
+      }, JWTErrorInvalidSignature);
+    }
+  });
+});
+
+describe("JWT verify hardening", () => {
+  const jwt = new JWT(SECRET);
+
+  test("should throw because token has extra parts", () => {
+    const token = jwt.sign({ a: 1 });
+    throws(() => {
+      jwt.verify(`${token}.extra`);
+    }, JWTErrorInvalidTokenLength);
+  });
+
+  test("should throw because algorithm not match", () => {
+    const token = new JWT(SECRET, { algorithm: "HS512" }).sign({ a: 1 });
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidAlgorithm);
+  });
+
+  test("should check signature before payload", () => {
+    const forged = `${JWT.encode({ alg: "HS256", typ: "JWT" })}.${JWT.encode({ exp: 1 })}.x`;
+    throws(() => {
+      jwt.verify(forged);
+    }, JWTErrorInvalidSignature);
+  });
+
+  test("should throw because exp is not a number", () => {
+    const token = jwt.sign({ exp: "1" } as never);
+    throws(() => {
+      jwt.verify(token);
+    }, JWTErrorInvalidToken);
+  });
+
+  test("should throw because expire at current time", () => {
+    const token = jwt.sign({ exp: 100 });
+    throws(() => {
+      jwt.verify(token, { currentTime: 100 * 1000 });
+    }, JWTErrorExpired);
+    strictEqual(jwt.verify(token, { currentTime: 99 * 1000 }).exp, 100);
+  });
+
+  test("should throw JWTError because header is not valid JSON", () => {
+    throws(() => {
+      jwt.verify("!!!.e30.x");
+    }, JWTErrorInvalidToken);
+  });
+
+  test("should throw JWTError because alg or typ is not a string", () => {
+    for (const h of [
+      { alg: { toString: 1 } },
+      { alg: [{ toString: 1 }] },
+      { alg: "HS256", typ: { toString: 1 } },
+    ]) {
+      throws(() => {
+        jwt.verify(`${JWT.encode(h)}.e30.x`);
+      }, JWTErrorInvalidToken);
+    }
+  });
+
+  test("should ignore null exp and nbf", () => {
+    const token = jwt.sign({ exp: null, nbf: null } as never);
+    strictEqual(jwt.verify(token).exp, null);
+    // Infinity is serialised to null
+    jwt.verify(jwt.sign({ a: 1 }, { expirationTime: Infinity }));
+  });
+
+  test("should throw because current time is not finite", () => {
+    const token = jwt.sign({ exp: 1 });
+    throws(() => {
+      jwt.verify(token, { currentTime: NaN });
+    }, TypeError);
+  });
+
+  test("should throw JWTError because token is not a string", () => {
+    throws(() => {
+      jwt.verify(undefined as never);
+    }, JWTErrorInvalidToken);
+  });
+
+  test("parse should stay lenient about extra parts", () => {
+    const r = JWT.parse("a.b.c.d.e");
+    strictEqual(r.length, 3);
+    strictEqual(r[2], "c");
+  });
+
+  test("should throw because of a huge number of parts", () => {
+    throws(() => {
+      jwt.verify(".".repeat(1024 * 1024));
+    }, JWTErrorInvalidTokenLength);
+  });
+
+  test("should throw JWTError because header is not an object", () => {
+    throws(() => {
+      jwt.verify(`${JWT.encode(null)}.e30.x`);
+    }, JWTErrorInvalidToken);
   });
 });

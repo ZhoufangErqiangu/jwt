@@ -9,13 +9,13 @@ export abstract class JWTError extends Error {
 
 export class JWTErrorAlgorithmNotSupport extends JWTError {
   constructor(algorithm: string) {
-    super(`Algorithm  \`${algorithm} \` is not supported`);
+    super(`Algorithm \`${algorithm}\` is not supported`);
   }
 }
 
 export class JWTErrorSecretNotFound extends JWTError {
   constructor() {
-    super("Secrete not found");
+    super("Secret not found");
   }
 }
 
@@ -27,28 +27,26 @@ export class JWTErrorPrivateKeyNotFound extends JWTError {
 
 export class JWTErrorInvalidType extends JWTError {
   constructor(type: string) {
-    super(`Invalid type  \`${type} \`, the \`typ\` must be \`JWT\``);
+    super(`Invalid type \`${type}\`, the \`typ\` must be \`JWT\``);
   }
 }
 
 export class JWTErrorInvalidIssuer extends JWTError {
   constructor(issuer: string | undefined, expect: string) {
-    super(`Invalid issuer  \`${issuer} \`, the \`iss\` must be \`${expect}\``);
+    super(`Invalid issuer \`${issuer}\`, the \`iss\` must be \`${expect}\``);
   }
 }
 
 export class JWTErrorInvalidSubject extends JWTError {
   constructor(subject: string | undefined, expect: string) {
-    super(
-      `Invalid subject  \`${subject} \`, the \`sub\` must be \`${expect}\``,
-    );
+    super(`Invalid subject \`${subject}\`, the \`sub\` must be \`${expect}\``);
   }
 }
 
 export class JWTErrorInvalidAudience extends JWTError {
   constructor(audience: string | undefined, expect: string) {
     super(
-      `Invalid audience  \`${audience} \`, the \`aud\` must be \`${expect}\``,
+      `Invalid audience \`${audience}\`, the \`aud\` must be \`${expect}\``,
     );
   }
 }
@@ -67,7 +65,7 @@ export class JWTErrorNotBefore extends JWTError {
 
 export class JWTErrorInvalidJwtId extends JWTError {
   constructor(jwtId: string | undefined, expect: string) {
-    super(`Invalid jwt id  \`${jwtId} \`, the \`jti\` must be \`${expect}\``);
+    super(`Invalid jwt id \`${jwtId}\`, the \`jti\` must be \`${expect}\``);
   }
 }
 
@@ -88,5 +86,19 @@ export class JWTErrorInvalidTokenLength extends JWTError {
     super(
       `Invalid token parts length \`${len}\`, the token parts length must be \`3\``,
     );
+  }
+}
+
+export class JWTErrorInvalidAlgorithm extends JWTError {
+  constructor(algorithm: unknown, expect: string) {
+    super(
+      `Invalid algorithm \`${algorithm}\`, the \`alg\` must be \`${expect}\``,
+    );
+  }
+}
+
+export class JWTErrorInvalidToken extends JWTError {
+  constructor(reason: string) {
+    super(`Invalid token, ${reason}`);
   }
 }
