@@ -113,5 +113,6 @@ const token = jwt.sign({ uid: 1234, exp: jwt.now + 3600 });
 `sign(payload, options)` accepts `issuer`, `subject`, `audience`, `jwtID`, `expirationTime`, `notBefore` and `issuedAt`.
 
 `verify(token, options)` accepts `issuer`, `subject`, `audience`, `jwtID`, and `currentTime` (in milliseconds, default is `Date.now()`).
+A `currentTime` that is not a finite number is a mistake of the caller, so `verify` throws a `TypeError` for it.
 
 The options of the instance take precedence over the options of `sign` / `verify`, and the claims in the payload take precedence over both when sign.

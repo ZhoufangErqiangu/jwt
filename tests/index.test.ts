@@ -252,6 +252,30 @@ describe("JWT integration test RS256", () => {
   });
 });
 
+describe("JWT RS256 signature encoding", () => {
+  const jwt = new JWT({ privateKey: PRIVATE_KEY });
+  const token = jwt.sign({ a: 1 });
+
+  test("should verify the canonical token", () => {
+    strictEqual(jwt.verify(token).a, 1);
+  });
+
+  test("should throw because signature is not canonical base64 url", () => {
+    const [h, p, sig] = JWT.parse(token);
+    const std = sig.replace(/-/g, "+").replace(/_/g, "/");
+    for (const s of [`${sig}!!`, `${sig}=`, `${sig}\n`, `${sig}A`]) {
+      throws(() => {
+        jwt.verify(`${h}.${p}.${s}`);
+      }, JWTErrorInvalidSignature);
+    }
+    if (std !== sig) {
+      throws(() => {
+        jwt.verify(`${h}.${p}.${std}`);
+      }, JWTErrorInvalidSignature);
+    }
+  });
+});
+
 describe("JWT verify hardening", () => {
   const jwt = new JWT(SECRET);
 
@@ -295,6 +319,50 @@ describe("JWT verify hardening", () => {
     throws(() => {
       jwt.verify("!!!.e30.x");
     }, JWTErrorInvalidToken);
+  });
+
+  test("should throw JWTError because alg or typ is not a string", () => {
+    for (const h of [
+      { alg: { toString: 1 } },
+      { alg: [{ toString: 1 }] },
+      { alg: "HS256", typ: { toString: 1 } },
+    ]) {
+      throws(() => {
+        jwt.verify(`${JWT.encode(h)}.e30.x`);
+      }, JWTErrorInvalidToken);
+    }
+  });
+
+  test("should ignore null exp and nbf", () => {
+    const token = jwt.sign({ exp: null, nbf: null } as never);
+    strictEqual(jwt.verify(token).exp, null);
+    // Infinity is serialised to null
+    jwt.verify(jwt.sign({ a: 1 }, { expirationTime: Infinity }));
+  });
+
+  test("should throw because current time is not finite", () => {
+    const token = jwt.sign({ exp: 1 });
+    throws(() => {
+      jwt.verify(token, { currentTime: NaN });
+    }, TypeError);
+  });
+
+  test("should throw JWTError because token is not a string", () => {
+    throws(() => {
+      jwt.verify(undefined as never);
+    }, JWTErrorInvalidToken);
+  });
+
+  test("parse should stay lenient about extra parts", () => {
+    const r = JWT.parse("a.b.c.d.e");
+    strictEqual(r.length, 3);
+    strictEqual(r[2], "c");
+  });
+
+  test("should throw because of a huge number of parts", () => {
+    throws(() => {
+      jwt.verify(".".repeat(1024 * 1024));
+    }, JWTErrorInvalidTokenLength);
   });
 
   test("should throw JWTError because header is not an object", () => {

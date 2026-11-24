@@ -450,12 +450,22 @@ export class JWT {
   }
 
   private checkHeader(input: JWTHeader) {
-    if (input.typ && input.typ !== "JWT") {
-      throw new JWTErrorInvalidType(input.typ);
+    // the header is not trusted, check the types before use
+    const typ: unknown = input.typ;
+    if (typ !== undefined && typ !== null && typeof typ !== "string") {
+      throw new JWTErrorInvalidToken("the `typ` must be a string");
+    }
+    if (typ && typ !== "JWT") {
+      throw new JWTErrorInvalidType(typ);
+    }
+
+    const alg: unknown = input.alg;
+    if (typeof alg !== "string") {
+      throw new JWTErrorInvalidToken("the `alg` must be a string");
     }
     // the token must be signed by the algorithm of this instance
-    if (input.alg !== this.algorithm) {
-      throw new JWTErrorInvalidAlgorithm(input.alg, this.algorithm);
+    if (alg !== this.algorithm) {
+      throw new JWTErrorInvalidAlgorithm(alg, this.algorithm);
     }
   }
 
@@ -478,9 +488,13 @@ export class JWT {
     }
 
     const n = JWT.ms2s(options.currentTime ?? Date.now());
+    // a not finite current time would pass every time check
+    if (!Number.isFinite(n)) {
+      throw new TypeError("The `currentTime` must be a finite number");
+    }
     // check expiration time, the current time must be before `exp`
     const exp: unknown = input.exp;
-    if (exp !== undefined) {
+    if (exp !== undefined && exp !== null) {
       if (typeof exp !== "number" || !Number.isFinite(exp)) {
         throw new JWTErrorInvalidToken("the `exp` must be a number");
       }
@@ -488,7 +502,7 @@ export class JWT {
     }
     // check not before
     const nbf: unknown = input.nbf;
-    if (nbf !== undefined) {
+    if (nbf !== undefined && nbf !== null) {
       if (typeof nbf !== "number" || !Number.isFinite(nbf)) {
         throw new JWTErrorInvalidToken("the `nbf` must be a number");
       }
@@ -549,11 +563,17 @@ export class JWT {
       throw new JWTErrorPublicKeyNotFound();
     }
 
+    // the base64 url decoder is lenient, only accept the canonical encoding
+    const sig = Buffer.from(signature, "base64url");
+    if (sig.toString("base64url") !== signature) {
+      throw new JWTErrorInvalidSignature();
+    }
+
     const verify = createVerify(JWT.hashAlgorithm(algorithm));
     verify.update(input, encoding);
     verify.end();
 
-    if (!verify.verify(this.publicKey, signature, "base64url")) {
+    if (!verify.verify(this.publicKey, sig)) {
       throw new JWTErrorInvalidSignature();
     }
   }
@@ -566,7 +586,15 @@ export class JWT {
     input: string,
     options: JWTVerifyOptions = {},
   ): T {
-    const [header, payload, signature] = JWT.parse(input);
+    if (typeof input !== "string") {
+      throw new JWTErrorInvalidToken("the token must be a string");
+    }
+    // the token must be exactly 3 parts, limit the split for a huge input
+    const parts = input.split(".", 4);
+    if (parts.length !== 3) {
+      throw new JWTErrorInvalidTokenLength(parts.length);
+    }
+    const [header, payload, signature] = parts as [string, string, string];
 
     // check header
     const h = JWT.decodeObject<JWTHeader>(header, "header");
@@ -645,7 +673,10 @@ export class JWT {
    * @returns The header, payload, and signature of the token
    */
   public static parse(input: string): [string, string, string] {
-    const r = input.split(".");
+    if (typeof input !== "string") {
+      throw new JWTErrorInvalidToken("the token must be a string");
+    }
+    const r = input.split(".", 3);
     if (r.length !== 3) {
       throw new JWTErrorInvalidTokenLength(r.length);
     }
