@@ -9,15 +9,18 @@ import {
   KeyObject,
   PrivateKeyInput,
   PublicKeyInput,
+  timingSafeEqual,
 } from "crypto";
 import {
   JWTErrorAlgorithmNotSupport,
   JWTErrorExpired,
+  JWTErrorInvalidAlgorithm,
   JWTErrorInvalidAudience,
   JWTErrorInvalidIssuer,
   JWTErrorInvalidJwtId,
   JWTErrorInvalidSignature,
   JWTErrorInvalidSubject,
+  JWTErrorInvalidToken,
   JWTErrorInvalidTokenLength,
   JWTErrorInvalidType,
   JWTErrorNotBefore,
@@ -450,6 +453,10 @@ export class JWT {
     if (input.typ && input.typ !== "JWT") {
       throw new JWTErrorInvalidType(input.typ);
     }
+    // the token must be signed by the algorithm of this instance
+    if (input.alg !== this.algorithm) {
+      throw new JWTErrorInvalidAlgorithm(input.alg, this.algorithm);
+    }
   }
 
   private checkPayload(input: JWTPayload, options: JWTVerifyOptions = {}) {
@@ -471,13 +478,21 @@ export class JWT {
     }
 
     const n = JWT.ms2s(options.currentTime ?? Date.now());
-    // check expiration time
-    if (typeof input.exp === "number" && input.exp < n) {
-      throw new JWTErrorExpired(input.exp);
+    // check expiration time, the current time must be before `exp`
+    const exp: unknown = input.exp;
+    if (exp !== undefined) {
+      if (typeof exp !== "number" || !Number.isFinite(exp)) {
+        throw new JWTErrorInvalidToken("the `exp` must be a number");
+      }
+      if (exp <= n) throw new JWTErrorExpired(exp);
     }
     // check not before
-    if (typeof input.nbf === "number" && input.nbf > n) {
-      throw new JWTErrorNotBefore(input.nbf);
+    const nbf: unknown = input.nbf;
+    if (nbf !== undefined) {
+      if (typeof nbf !== "number" || !Number.isFinite(nbf)) {
+        throw new JWTErrorInvalidToken("the `nbf` must be a number");
+      }
+      if (nbf > n) throw new JWTErrorNotBefore(nbf);
     }
 
     // check jwt id
@@ -513,8 +528,13 @@ export class JWT {
     algorithm: JWTAlgorithm | string,
     encoding: BufferEncoding = "utf-8",
   ) {
-    const s = this.buildSignature(input, algorithm, encoding);
-    if (s !== signature) {
+    const expect = Buffer.from(
+      this.buildSignature(input, algorithm, encoding),
+      "utf-8",
+    );
+    const actual = Buffer.from(signature, "utf-8");
+    // compare in constant time
+    if (expect.length !== actual.length || !timingSafeEqual(expect, actual)) {
       throw new JWTErrorInvalidSignature();
     }
   }
@@ -549,18 +569,37 @@ export class JWT {
     const [header, payload, signature] = JWT.parse(input);
 
     // check header
-    const h = JWT.decode<JWTHeader>(header);
+    const h = JWT.decodeObject<JWTHeader>(header, "header");
     this.checkHeader(h);
 
-    // check payload
-    const p = JWT.decode<T>(payload);
-    this.checkPayload(p, options);
-
-    // check signature
+    // check signature, before anything in payload is trusted
     const hp = `${header}.${payload}`;
     this.checkSignature(signature, hp, h.alg);
 
+    // check payload
+    const p = JWT.decodeObject<T>(payload, "payload");
+    this.checkPayload(p, options);
+
     return p;
+  }
+
+  /**
+   * Decode a token part, which must be a JSON object
+   * @param data The base64 url encoded data
+   * @param part The name of the part, used in error message
+   * @returns The decoded object
+   */
+  private static decodeObject<T>(data: string, part: string): T {
+    let r: unknown;
+    try {
+      r = JWT.decode(data);
+    } catch {
+      throw new JWTErrorInvalidToken(`the ${part} is not valid JSON`);
+    }
+    if (typeof r !== "object" || r === null || Array.isArray(r)) {
+      throw new JWTErrorInvalidToken(`the ${part} must be a JSON object`);
+    }
+    return r as T;
   }
 
   /**
@@ -606,7 +645,7 @@ export class JWT {
    * @returns The header, payload, and signature of the token
    */
   public static parse(input: string): [string, string, string] {
-    const r = input.split(".", 3);
+    const r = input.split(".");
     if (r.length !== 3) {
       throw new JWTErrorInvalidTokenLength(r.length);
     }

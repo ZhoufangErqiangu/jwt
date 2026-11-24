@@ -90,3 +90,17 @@ export class JWTErrorInvalidTokenLength extends JWTError {
     );
   }
 }
+
+export class JWTErrorInvalidAlgorithm extends JWTError {
+  constructor(algorithm: unknown, expect: string) {
+    super(
+      `Invalid algorithm \`${algorithm}\`, the \`alg\` must be \`${expect}\``,
+    );
+  }
+}
+
+export class JWTErrorInvalidToken extends JWTError {
+  constructor(reason: string) {
+    super(`Invalid token, ${reason}`);
+  }
+}

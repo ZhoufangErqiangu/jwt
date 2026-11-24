@@ -57,7 +57,7 @@ const PUBLIC_KEYS: Array<TokenKey> = [
   },
 ];
 
-const [h, p, s] = JWT.parse(token);
+const [h] = JWT.parse(token);
 
 interface TokenHeader extends JWTHeader {
   kid: string;

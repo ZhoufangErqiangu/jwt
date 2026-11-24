@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig({
   extends: [eslint.configs.recommended, tseslint.configs.recommended],
-  files: ["**/*.{ts}"],
+  files: ["**/*.ts"],
   languageOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
